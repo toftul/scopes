@@ -15,6 +15,7 @@ swift run Vectorscope                    # run unbundled (permission attaches to
 swift run Vectorscope --check-shaders    # compile the runtime Metal shaders and verify every entry point; exits 0/1
 ./build-app.sh [debug|release]           # build + wrap into build/Vectorscope.app (signed) — the normal way to run
 ./scripts/make-signing-cert.sh           # one-time: create the stable signing identity (see below)
+./scripts/release.sh [version]           # universal (arm64+x86_64) .app + ditto zip for a GitHub release
 ```
 
 There is no test target. After any shader change, the fastest correctness gate
@@ -35,6 +36,12 @@ therefore uses a stable self-signed identity **"Vectorscope Dev"**:
   **without `-v`** because the cert is untrusted-but-usable.
 - If the signature identity ever changes, reset with
   `tccutil reset ScreenCapture co.vectorscope.picker` and re-grant.
+
+**Release artifacts are ad-hoc signed on purpose.** `scripts/release.sh` does not
+use "Vectorscope Dev" — that cert is local-only, so it helps no downloader and
+can't be notarised. Ad-hoc is still stable per-binary, so users keep their TCC
+grant until they update. Pushing a `v*` tag runs `.github/workflows/release.yml`,
+which calls the same script and publishes the zip.
 
 ## Architecture — the frame pipeline
 

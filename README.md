@@ -7,6 +7,26 @@ tools like [vectorscope.co](https://vectorscope.co).
 Native Swift + **ScreenCaptureKit** (capture) + **Metal** (analysis & drawing).
 Everything runs on the GPU each frame, so it stays smooth and low-power.
 
+## Install
+
+Grab the latest `Vectorscope-*-universal.zip` from
+[**Releases**](https://github.com/toftul/scopes/releases/latest) — universal
+(Apple Silicon + Intel), macOS 14 or later. Unzip, drag **Vectorscope.app** to
+`/Applications`, then:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Vectorscope.app
+```
+
+That step is needed because the app is signed but **not notarised** (that needs a
+paid Apple Developer account) — without it macOS refuses to open a downloaded
+build. Equivalently: try to open it, then allow it under System Settings ▸
+Privacy & Security ▸ *Open Anyway*.
+
+First launch prompts for **Screen Recording** permission — grant it and relaunch.
+If you'd rather not trust a binary, [build from source](#build--run); it takes
+about 15 seconds and needs no Xcode.
+
 ## Pipeline
 
 ```
@@ -36,6 +56,12 @@ open build/Vectorscope.app
 
 First launch prompts for **Screen Recording** permission
 (System Settings ▸ Privacy & Security ▸ Screen Recording). Grant it and relaunch.
+
+To produce a distributable universal build + zip (what CI ships on a tag):
+
+```bash
+./scripts/release.sh 0.1.0      # → build/Vectorscope-0.1.0-universal.zip
+```
 
 For a quick dev loop without bundling:
 
@@ -81,7 +107,9 @@ saturation. What's next:
 - [ ] Menu-bar presence (`LSUIElement`) + preferences
 - [x] Waveform / RGB parade
 - [ ] Precompiled `.metallib` once Xcode is installed
-- [ ] Sign + notarize for distribution
+- [ ] Notarize releases (needs a paid Apple Developer account — until then,
+      downloads need the `xattr` step above)
+- [x] Tagged universal builds published to Releases by CI
 
 ## License
 
