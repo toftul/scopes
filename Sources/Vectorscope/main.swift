@@ -11,7 +11,8 @@ if CommandLine.arguments.contains("--check-shaders") {
     do {
         let lib = try device.makeLibrary(source: ShaderSource.metal, options: nil)
         let expected = ["accumulateHistogram", "traceVertex", "traceFragment",
-                        "gratVertex", "gratFragment"]
+                        "gratVertex", "gratFragment",
+                        "accumulateWaveform", "waveVertex", "waveFragment"]
         let missing = expected.filter { lib.makeFunction(name: $0) == nil }
         if missing.isEmpty {
             print("shader OK — all \(expected.count) entry points compiled")

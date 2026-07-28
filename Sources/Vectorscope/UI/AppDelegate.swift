@@ -16,7 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         self.renderer = renderer
 
-        mtkView = MTKView(frame: NSRect(x: 0, y: 0, width: 480, height: 480), device: device)
+        mtkView = MTKView(frame: NSRect(x: 0, y: 0, width: 460, height: 720), device: device)
         mtkView.colorPixelFormat = .bgra8Unorm
         mtkView.delegate = renderer
         mtkView.isPaused = false
@@ -29,7 +29,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                           backing: .buffered, defer: false)
         window.title = "Vectorscope"
         window.contentView = mtkView
-        window.contentAspectRatio = NSSize(width: 1, height: 1)  // keep it square
+        window.contentAspectRatio = NSSize(width: 460, height: 720) // scope + waveform
+        window.contentMinSize = NSSize(width: 300, height: 470)
         window.level = .floating                                 // always-on-top
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         window.center()
@@ -95,6 +96,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                           action: #selector(toggleColorSpace), keyEquivalent: "c").target = self
         scopeMenu.addItem(withTitle: "Cycle Colorize / Mono / Heatmap",
                           action: #selector(toggleMode), keyEquivalent: "m").target = self
+        scopeMenu.addItem(withTitle: "Cycle Waveform / Parade / RGB",
+                          action: #selector(cycleWaveform), keyEquivalent: "w").target = self
         scopeMenu.addItem(withTitle: "Brighter Trace",
                           action: #selector(brighter), keyEquivalent: "=").target = self
         scopeMenu.addItem(withTitle: "Dimmer Trace",
@@ -125,6 +128,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func toggleMode() {
         renderer.mode = (renderer.mode + 1) % 3   // colorize → mono → heatmap
+    }
+
+    @objc private func cycleWaveform() {
+        renderer.waveformMode = (renderer.waveformMode + 1) % 3  // luma → parade → rgb overlay
     }
 
     @objc private func brighter() { renderer.gain = min(renderer.gain * 1.5, 100) }

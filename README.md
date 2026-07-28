@@ -51,8 +51,10 @@ swift run Vectorscope --check-shaders   # just verify shaders compile, then exit
 | Pick region to scope | ⌘R |
 | Scope whole display | ⌘D |
 | Toggle Rec.709 / Rec.601 | ⌘C |
-| Toggle trace / heatmap | ⌘M |
+| Cycle vectorscope colorize / mono / heatmap | ⌘M |
+| Cycle waveform: luma / parade / RGB overlay | ⌘W |
 | Brighter / dimmer trace | ⌘= / ⌘- |
+| More saturated / more pale | ⌘] / ⌘[ |
 
 ## Layout of the code
 
@@ -67,15 +69,17 @@ swift run Vectorscope --check-shaders   # just verify shaders compile, then exit
 
 ## Status & roadmap
 
-Working now: whole-display + region capture, 256×256 histogram trace, graticule
-(rings, crosshair, 75% target boxes, skin-tone line), Rec.709/601, mono/heatmap,
-gain. See the roadmap discussion for what's next:
+Working now: whole-display + region capture (own windows excluded to avoid a
+capture feedback loop), vectorscope with graticule (rings, crosshair, 75%
+target boxes, skin-tone line) in colorize/mono/heatmap, plus a bottom panel with
+luma waveform / RGB parade / RGB overlay. Rec.709/601, adjustable gain and
+saturation. What's next:
 
 - [ ] Region resize handles / live re-pick
 - [ ] "Follow this window" capture mode
-- [ ] RGB-tinted trace (colour points by their source pixel)
+- [ ] RGB-tinted vectorscope trace (colour points by their source pixel)
 - [ ] Menu-bar presence (`LSUIElement`) + preferences
-- [ ] Waveform / RGB parade
+- [x] Waveform / RGB parade
 - [ ] Precompiled `.metallib` once Xcode is installed
 - [ ] Sign + notarize for distribution
 

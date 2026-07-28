@@ -129,5 +129,112 @@ enum ShaderSource {
     fragment float4 gratFragment(constant float4& color [[buffer(0)]]) {
         return color;
     }
+
+    // ---- Waveform / Parade -------------------------------------------------
+    //
+    // A waveform is a 2D histogram indexed by (source column, value). We
+    // accumulate four channels per cell: R, G, B and luma.
+
+    struct WaveParams {   // compute
+        uint  waveBins;   // horizontal resolution (source columns)
+        uint  valueBins;  // vertical resolution (0..1 value)
+        float kr;
+        float kb;
+    };
+
+    kernel void accumulateWaveform(
+        texture2d<float, access::read> src  [[texture(0)]],
+        device atomic_uint*            wave [[buffer(0)]],
+        constant WaveParams&           p    [[buffer(1)]],
+        uint2                          gid  [[thread_position_in_grid]])
+    {
+        uint W = src.get_width();
+        uint H = src.get_height();
+        if (gid.x >= W || gid.y >= H) { return; }
+
+        float4 c   = src.read(gid);
+        float  kr  = p.kr, kb = p.kb, kg = 1.0 - kr - kb;
+        float  lum = kr * c.r + kg * c.g + kb * c.b;
+
+        uint bx = min(uint(float(gid.x) / float(W) * float(p.waveBins)), p.waveBins - 1u);
+        uint vb = p.valueBins;
+        uint vr = min(uint(clamp(c.r, 0.0, 1.0) * float(vb - 1u)), vb - 1u);
+        uint vg = min(uint(clamp(c.g, 0.0, 1.0) * float(vb - 1u)), vb - 1u);
+        uint vB = min(uint(clamp(c.b, 0.0, 1.0) * float(vb - 1u)), vb - 1u);
+        uint vl = min(uint(clamp(lum, 0.0, 1.0) * float(vb - 1u)), vb - 1u);
+
+        atomic_fetch_add_explicit(&wave[(vr * p.waveBins + bx) * 4u + 0u], 1u, memory_order_relaxed);
+        atomic_fetch_add_explicit(&wave[(vg * p.waveBins + bx) * 4u + 1u], 1u, memory_order_relaxed);
+        atomic_fetch_add_explicit(&wave[(vB * p.waveBins + bx) * 4u + 2u], 1u, memory_order_relaxed);
+        atomic_fetch_add_explicit(&wave[(vl * p.waveBins + bx) * 4u + 3u], 1u, memory_order_relaxed);
+    }
+
+    struct WaveVSOut {
+        float4 pos [[position]];
+        float2 uv;   // 0..1 across the viewport (x left→right, y bottom→top)
+    };
+
+    vertex WaveVSOut waveVertex(uint vid [[vertex_id]]) {
+        float2 p;
+        p.x = (vid == 2) ? 3.0 : -1.0;
+        p.y = (vid == 1) ? 3.0 : -1.0;
+        WaveVSOut o;
+        o.pos = float4(p, 0.0, 1.0);
+        o.uv  = p * 0.5 + 0.5;
+        return o;
+    }
+
+    struct WaveDrawParams {   // fragment
+        uint  waveBins;
+        uint  valueBins;
+        float gain;
+        uint  mode;   // 0 = luma, 1 = parade, 2 = rgb overlay
+    };
+
+    static inline float sampleWave(device const uint* wave, float2 uv, int ch,
+                                   uint waveBins, uint valueBins) {
+        float fx = clamp(uv.x, 0.0, 1.0) * float(waveBins)  - 0.5;
+        float fy = clamp(uv.y, 0.0, 1.0) * float(valueBins) - 0.5;
+        int x0 = int(floor(fx)), y0 = int(floor(fy));
+        float tx = fx - float(x0), ty = fy - float(y0);
+        int xa = clamp(x0,     0, int(waveBins)  - 1), xb = clamp(x0 + 1, 0, int(waveBins)  - 1);
+        int ya = clamp(y0,     0, int(valueBins) - 1), yb = clamp(y0 + 1, 0, int(valueBins) - 1);
+        float c00 = float(wave[(uint(ya) * waveBins + uint(xa)) * 4u + uint(ch)]);
+        float c10 = float(wave[(uint(ya) * waveBins + uint(xb)) * 4u + uint(ch)]);
+        float c01 = float(wave[(uint(yb) * waveBins + uint(xa)) * 4u + uint(ch)]);
+        float c11 = float(wave[(uint(yb) * waveBins + uint(xb)) * 4u + uint(ch)]);
+        return mix(mix(c00, c10, tx), mix(c01, c11, tx), ty);
+    }
+
+    fragment float4 waveFragment(
+        WaveVSOut                in   [[stage_in]],
+        device const uint*       wave [[buffer(0)]],
+        constant WaveDrawParams& p    [[buffer(1)]])
+    {
+        if (p.mode == 1u) {                 // RGB parade — three panels side by side
+            float x3 = in.uv.x * 3.0;
+            int   ch = min(int(floor(x3)), 2);
+            float lx = x3 - float(ch);
+            float count = sampleWave(wave, float2(lx, in.uv.y), ch, p.waveBins, p.valueBins);
+            float v = clamp(log(1.0 + count * p.gain), 0.0, 1.0);
+            if (v <= 0.002) { discard_fragment(); return float4(0.0); }
+            float3 base = (ch == 0) ? float3(1.0, 0.28, 0.28)
+                        : (ch == 1) ? float3(0.28, 1.0, 0.38)
+                                    : float3(0.38, 0.55, 1.0);
+            return float4(base * v, 1.0);
+        }
+        if (p.mode == 2u) {                 // RGB overlay
+            float vr = clamp(log(1.0 + sampleWave(wave, in.uv, 0, p.waveBins, p.valueBins) * p.gain), 0.0, 1.0);
+            float vg = clamp(log(1.0 + sampleWave(wave, in.uv, 1, p.waveBins, p.valueBins) * p.gain), 0.0, 1.0);
+            float vb = clamp(log(1.0 + sampleWave(wave, in.uv, 2, p.waveBins, p.valueBins) * p.gain), 0.0, 1.0);
+            if (vr + vg + vb <= 0.004) { discard_fragment(); return float4(0.0); }
+            return float4(vr, vg, vb, 1.0);
+        }
+        // luma waveform
+        float count = sampleWave(wave, in.uv, 3, p.waveBins, p.valueBins);
+        float v = clamp(log(1.0 + count * p.gain), 0.0, 1.0);
+        if (v <= 0.002) { discard_fragment(); return float4(0.0); }
+        return float4(float3(0.85, 0.92, 0.85) * v, 1.0);
+    }
     """
 }
