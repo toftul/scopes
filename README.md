@@ -75,8 +75,10 @@ gain. See the roadmap discussion for what's next:
 - [ ] "Follow this window" capture mode
 - [ ] RGB-tinted trace (colour points by their source pixel)
 - [ ] Menu-bar presence (`LSUIElement`) + preferences
-- [ ] Waveform / RGB parade (logic exists in `legacy/`)
+- [ ] Waveform / RGB parade
 - [ ] Precompiled `.metallib` once Xcode is installed
 - [ ] Sign + notarize for distribution
 
-The original Python/ffmpeg prototypes are preserved in `legacy/`.
+## License
+
+[MIT](LICENSE) © 2026 Ivan Toftul
