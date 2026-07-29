@@ -10,7 +10,11 @@ cd "$(dirname "$0")/.."
 APP_NAME="Vectorscope"
 RAW_VERSION="${1:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Info.plist)}"
 VERSION="${RAW_VERSION#v}"
-BUNDLE="build/${APP_NAME}.app"
+# Stage into build/release/ — deliberately NOT build/Vectorscope.app, which is
+# build-app.sh's dev bundle signed with the stable "Vectorscope Dev" identity.
+# Clobbering it with this ad-hoc-signed bundle changes its code signature and
+# silently drops the dev app's Screen Recording grant.
+BUNDLE="build/release/${APP_NAME}.app"
 ZIP="build/${APP_NAME}-${VERSION}-universal.zip"
 
 echo "▸ Building universal release (arm64 + x86_64), version ${VERSION}…"
